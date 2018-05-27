@@ -79,6 +79,7 @@ namespace YealinkPhoneConverter
         private void ParseXML(string path)
         {
             string[] fileLines = File.ReadAllLines(path);
+            int addedCount = 0;
 
             for (int i = 0; i < fileLines.Length; i++)
             {
@@ -87,12 +88,15 @@ namespace YealinkPhoneConverter
                 if (line.Contains("</DirectoryEntry>"))
                 {
                     Contact contact = new Contact();
-                    contact.FirstName = fileLines[i - 2].Replace("<Name>", "").Replace("</Name>", "").Trim();
-                    contact.Work = fileLines[i - 1].Replace("<Telephone>", "").Replace("</Telephone>", "").Trim();
+                    contact.FirstName = RemoveSpecialCharacters(fileLines[i - 2].Replace("<Name>", "").Replace("</Name>", "").Trim());
+                    contact.Work = RemoveSpecialCharacters(fileLines[i - 1].Replace("<Telephone>", "").Replace("</Telephone>", "").Trim());
 
                     bindingList.Add(contact);
+                    addedCount++;
                 }
             }
+
+            MessageBox.Show($"Added {addedCount} contacts.");
         }
 
         private void ParseCSV(string path)
@@ -106,6 +110,8 @@ namespace YealinkPhoneConverter
                 headerNames[i] = headerNames[i].Trim();
             }
 
+            int addedCount = 0;
+
             for (int i = 1; i < fileLines.Length; i++)
             {
                 string[] columns = fileLines[i].Split(',');
@@ -118,28 +124,28 @@ namespace YealinkPhoneConverter
                     switch (headerNames[j])
                     {
                         case "FirstName":
-                            contact.FirstName = columns[j].Trim();
+                            contact.FirstName = RemoveSpecialCharacters(columns[j].Trim());
                             break;
 
                         case "LastName":
-                            contact.LastName = columns[j].Trim();
+                            contact.LastName = RemoveSpecialCharacters(columns[j].Trim());
                             break;
 
                         case "Mobile":
-                            contact.Mobile = columns[j].Trim();
+                            contact.Mobile = RemoveSpecialCharacters(columns[j].Trim());
                             break;
 
                         case "Work":
-                            contact.Work = columns[j].Trim();
+                            contact.Work = RemoveSpecialCharacters(columns[j].Trim());
                             break;
                     }
                 }
 
-                MessageBox.Show($"Added contact:\nName: {contact.FirstName} {contact.LastName}\nMobile: {contact.Mobile}\nWork: {contact.Work}");
-
                 bindingList.Add(contact);
+                addedCount++;
             }
 
+            MessageBox.Show($"Added {addedCount} contacts.");
         }
 
         private void ExportXML()
@@ -155,10 +161,10 @@ namespace YealinkPhoneConverter
                 sb.AppendLine("\t<DirectoryEntry>");
                 sb.AppendLine($"\t\t<Name>{contact.FirstName} {contact.LastName}</Name>");
 
-                if (contact.Mobile != "")
-                    sb.AppendLine($"\t\t<Telephone>{contact.Mobile}</Telephone>");
-                else
+                if (!string.IsNullOrWhiteSpace(contact.Work))
                     sb.AppendLine($"\t\t<Telephone>{contact.Work}</Telephone>");
+                else
+                    sb.AppendLine($"\t\t<Telephone>{contact.Mobile}</Telephone>");
 
                 sb.AppendLine("\t</DirectoryEntry>");
             }
@@ -182,6 +188,42 @@ namespace YealinkPhoneConverter
             }
         }
 
+        private void tableLayoutPanel1_Paint(object sender, PaintEventArgs e)
+        {
 
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            foreach (var a in bindingList
+                    .ToLookup(x => new { x.FirstName, x.LastName, x.Mobile, x.Work })
+                    .SelectMany(x => x.Skip(1))
+                    .ToArray())
+            {
+                bindingList.Remove(a);
+            }
+        }
+
+        private static string RemoveSpecialCharacters(string str)
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < str.Length; i++)
+            {
+                if ((str[i] >= '0' && str[i] <= '9')
+                    || (str[i] >= 'A' && str[i] <= 'z'
+                        || (str[i] == '.' || str[i] == '_'
+                            || (str[i] == '+' || str[i] == '\''))))
+                {
+                    sb.Append(str[i]);
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            bindingList.Clear();
+        }
     }
 }
